@@ -2,25 +2,54 @@
 
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
-  const [sent, setSent] = useState(false);
+  const [password, setPassword] = useState("");
+  const [isSignUp, setIsSignUp] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
+  const router = useRouter();
 
-  async function handleLogin(e: React.FormEvent) {
+  async function handleAuth(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     setError("");
+    setMessage("");
+    
     const supabase = createClient();
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
-    });
+
+    if (isSignUp) {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+      });
+      
+      if (error) {
+        setError(error.message);
+      } else if (data.session) {
+        // Auto sign-in (if confirm email is disabled)
+        router.push("/dashboard");
+      } else {
+        setMessage("Check your email to confirm your account!");
+      }
+    } else {
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      
+      if (error) {
+        setError(error.message);
+      } else {
+        router.push("/dashboard");
+        router.refresh(); // Refresh layout to grab new session
+      }
+    }
     setLoading(false);
-    if (error) setError(error.message);
-    else setSent(true);
   }
 
   return (
@@ -30,20 +59,22 @@ export default function LoginPage() {
           <span>🪶</span> Inkwell
         </div>
 
-        {sent ? (
+        {message ? (
           <div style={{ textAlign: "center" }}>
             <div style={{ fontSize: "2.5rem", marginBottom: "1rem" }}>📬</div>
-            <h2 style={{ marginBottom: "0.5rem" }}>Check your email</h2>
+            <h2 style={{ marginBottom: "0.5rem" }}>Almost there!</h2>
             <p style={{ color: "var(--text-muted)", fontSize: "0.9rem" }}>
-              We sent a magic link to <strong>{email}</strong>. Click it to sign in — no password needed.
+              {message}
             </p>
           </div>
         ) : (
           <>
-            <h1 className="auth-title">Welcome back</h1>
-            <p className="auth-sub">Enter your email and we&apos;ll send you a magic link.</p>
+            <h1 className="auth-title">{isSignUp ? "Create an account" : "Welcome back"}</h1>
+            <p className="auth-sub">
+              {isSignUp ? "Start your journaling journey today." : "Enter your email and password to sign in."}
+            </p>
 
-            <form onSubmit={handleLogin} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+            <form onSubmit={handleAuth} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
               <div>
                 <label className="label">Email address</label>
                 <input
@@ -56,18 +87,38 @@ export default function LoginPage() {
                   autoFocus
                 />
               </div>
+              
+              <div>
+                <label className="label">Password</label>
+                <input
+                  type="password"
+                  className="input"
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  style={{ fontFamily: "monospace" }}
+                />
+              </div>
 
               {error && (
                 <p style={{ color: "var(--danger)", fontSize: "0.85rem" }}>{error}</p>
               )}
 
               <button type="submit" className="btn btn-primary" disabled={loading} style={{ width: "100%", justifyContent: "center" }}>
-                {loading ? <span className="spinner" /> : "Send magic link ✨"}
+                {loading ? <span className="spinner" /> : (isSignUp ? "Sign Up" : "Sign In")}
               </button>
             </form>
 
             <p style={{ textAlign: "center", marginTop: "1.5rem", fontSize: "0.82rem", color: "var(--text-faint)" }}>
-              New here? Just enter your email — we&apos;ll create your account automatically.
+              {isSignUp ? "Already have an account?" : "Don't have an account?"}{" "}
+              <button 
+                type="button" 
+                onClick={() => setIsSignUp(!isSignUp)}
+                style={{ background: "none", border: "none", color: "var(--primary)", cursor: "pointer", padding: 0, textDecoration: "underline" }}
+              >
+                {isSignUp ? "Sign in" : "Sign up"}
+              </button>
             </p>
           </>
         )}
