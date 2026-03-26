@@ -37,6 +37,7 @@ function WritePageContent() {
         setWordCount(data.word_count || 0);
       }
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [entryId]);
 
   function showToast(msg: string) {
