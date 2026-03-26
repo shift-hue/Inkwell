@@ -21,6 +21,7 @@ export default function SettingsPage() {
       if (profile) setUsername(profile.username || "");
     }
     load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function handleSave(e: React.FormEvent) {
